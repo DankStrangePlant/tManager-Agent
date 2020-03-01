@@ -6,6 +6,16 @@ namespace TManagerAgent
     {
         public TManagerAgent()
         {
+            
+
+        }
+
+        public override void PreSaveAndQuit()
+        {
+            base.PreSaveAndQuit();
+
+            TManagerAgentWorld world = ModContent.GetInstance<TManagerAgentWorld>();
+            world.PreCloseWorld();
         }
     }
 }

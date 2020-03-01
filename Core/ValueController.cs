@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria;
 using Terraria.Map;
+using TManagerAgent.Net;
 
 namespace TManagerAgent.Core
 {
@@ -221,6 +222,10 @@ namespace TManagerAgent.Core
 
     public class MemberReader : MemberListener
     {
+        #region Get Details
+        public NetworkProtocol NetworkProtocol { get; set; }
+        #endregion
+
         #region Constructor
         public MemberReader(MemberRoute route) : base(route) { }
         #endregion
@@ -230,7 +235,7 @@ namespace TManagerAgent.Core
         {
             object value = ValueController.Instance.GetMember(Route);
 
-            // Send value to server
+            // Send value to server, predicating on NetworkProtocol
 
             base.Update();
         }
