@@ -9,6 +9,7 @@ using Terraria.ModLoader;
 using Newtonsoft.Json;
 using TManagerAgent.Net;
 using Terraria.ID;
+using TManagerAgent.Core;
 
 namespace TManagerAgent
 {
@@ -24,6 +25,8 @@ namespace TManagerAgent
         public ClientUDP ClientUDP;
 
         Stopwatch pingStopWatch = new Stopwatch();
+
+        public List<AgentAction> ActiveActions { get; set; } = new List<AgentAction>();
 
         public override void Initialize()
         {

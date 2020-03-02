@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria;
 using Terraria.Map;
-using TManagerAgent.Net;
 
 namespace TManagerAgent.Core
 {
@@ -19,21 +18,21 @@ namespace TManagerAgent.Core
         {
             if(route.Instance)
             {
-                return GetMember(route.ContextType, route.Context, route.AccessorKey);
+                return GetMember(route.Context, route.AccessorKey);
             }
-            return GetStaticMember(route.ContextType, route.AccessorKey);
+            return GetStaticMember(route.Context.ContextType, route.AccessorKey);
         }
 
-        public object GetMember(MemberContextType contextType, object context, string key)
+        public object GetMember(MemberContext context, string key)
         {
-            switch(contextType)
+            switch(context.ContextType)
             {
                 case MemberContextType.World:
-                    return GetWorldMember(context as WorldMap, key);
+                    return GetWorldMember(context.ResolvedContext as WorldMap, key);
                 case MemberContextType.Player:
-                    return GetPlayerMember(context as Player, key);
+                    return GetPlayerMember(context.ResolvedContext as Player, key);
                 default:
-                    throw new ArgumentException($"Cannot get non-static member in context '{contextType}'");
+                    throw new ArgumentException($"Cannot get non-static member in context '{context.ContextType}'");
             }
         }
 
@@ -66,23 +65,23 @@ namespace TManagerAgent.Core
         {
             if(route.Instance)
             {
-                SetMember(route.ContextType, route.Context, route.AccessorKey, value);
+                SetMember(route.Context, route.AccessorKey, value);
             }
-            SetStaticMember(route.ContextType, route.AccessorKey, value);
+            SetStaticMember(route.Context.ContextType, route.AccessorKey, value);
         }
 
-        public void SetMember(MemberContextType contextType, object context, string key, object value)
+        public void SetMember(MemberContext context, string key, object value)
         {
-            switch (contextType)
+            switch (context.ContextType)
             {
                 case MemberContextType.World:
-                    SetWorldMember(context as WorldMap, key, value);
+                    SetWorldMember(context.ResolvedContext as WorldMap, key, value);
                     break;
                 case MemberContextType.Player:
-                    SetPlayerMember(context as Player, key, value);
+                    SetPlayerMember(context.ResolvedContext as Player, key, value);
                     break;
                 default:
-                    throw new ArgumentException($"Cannot set non-static member in context '{contextType}'");
+                    throw new ArgumentException($"Cannot set non-static member in context '{context.ContextType}'");
             }
         }
 
@@ -144,6 +143,10 @@ namespace TManagerAgent.Core
         private Dictionary<string, IMemberAccessor<Player>> PlayerMembers = new Dictionary<string, IMemberAccessor<Player>>();
 
         #region Init
+        /// <summary>
+        /// This is currently where we actually add entries for each
+        /// game variable we want to expose.
+        /// </summary>
         private void Init()
         {
             #region Static Main Members (alphabetized)
@@ -168,7 +171,7 @@ namespace TManagerAgent.Core
         }
 #endregion
 
-#endregion
+        #endregion
 
         #region Helper functions
         private void AddMainField(string key, string name = null) => MainMembers.Add(key, new FieldAccessor<Main>(name ?? key));
@@ -183,141 +186,5 @@ namespace TManagerAgent.Core
 
         #endregion
 
-    }
-
-    public interface IMemberListener
-    {
-        #region Routing Information
-        MemberRoute Route { get; set; }
-        #endregion
-
-        void Update();
-        bool Completed();
-    }
-
-    public abstract class MemberListener : IMemberListener
-    {
-        #region Constructor
-        public MemberListener(MemberRoute route)
-        {
-            Route = route;
-        }
-        #endregion
-
-        #region Protected State
-        protected bool Complete { get; set; } = false;
-        #endregion
-
-        #region IMemberListener
-        public MemberRoute Route { get; set; }
-
-        public virtual void Update()
-        {
-            Complete = true;
-        }
-
-        public bool Completed() => Complete;
-        #endregion
-    }
-
-    public class MemberReader : MemberListener
-    {
-        #region Get Details
-        public NetworkProtocol NetworkProtocol { get; set; }
-        #endregion
-
-        #region Constructor
-        public MemberReader(MemberRoute route) : base(route) { }
-        #endregion
-
-        #region IMemberListener
-        public override void Update()
-        {
-            object value = ValueController.Instance.GetMember(Route);
-
-            // Send value to server, predicating on NetworkProtocol
-
-            base.Update();
-        }
-        #endregion
-    }
-
-    public class MemberWriter : MemberListener
-    {
-        #region Set Details
-        public MemberWriterValue WriterValue { get; set; }
-        #endregion
-
-        #region Constructor
-        public MemberWriter(MemberRoute route, MemberWriterValue value) : base(route)
-        {
-            WriterValue = value;
-        }
-
-        public MemberWriter(MemberRoute route, object value) : base(route)
-        {
-            WriterValue = new MemberWriterValue(value, true);
-        }
-        #endregion
-
-        #region IMemberListener
-        public override void Update()
-        {
-            ValueController.Instance.SetMember(Route, WriterValue.Value);
-
-            base.Update();
-        }
-        #endregion
-    }
-
-    /// <summary>
-    /// Wrapper for values to set Terraria members to. Can either be
-    /// a literal value or a reference to another member.
-    /// </summary>
-    public class MemberWriterValue
-    {
-        #region Public Properties
-        public bool Literal { get; set; }
-        public object Value
-        {
-            get
-            {
-                if (Literal) return mValue;
-
-                return ValueController.Instance.GetMember(mRoute);
-            }
-        }
-        #endregion
-
-        #region Constructors
-        public MemberWriterValue(object value, bool literal)
-        {
-            if (!literal && !(value is MemberRoute))
-            {
-                throw new ArgumentException($"Non-literal MemberWriterValue must use MemberRoute as value. Given '{value.GetType()}'");
-            }
-            if(literal)
-            {
-                mValue = value;
-            }
-            else
-            {
-                mRoute = (MemberRoute)value;
-            }
-
-            Literal = literal;
-        }
-
-        public MemberWriterValue(MemberRoute route)
-        {
-            mValue = route;
-            Literal = false;
-        }
-        #endregion
-
-        #region Private Properties
-        private object mValue;
-        private MemberRoute mRoute;
-        #endregion
     }
 }
