@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TManagerAgent", "TManagerAgent.csproj", "{ADE76E88-4B96-4ABB-901C-740C4E0EA0B9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TManagerAgentTest", "TManagerAgentTest\TManagerAgentTest.csproj", "{FC554DC3-4AB9-4A00-94BC-5A56353C0315}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TManagerAgentTest", "ModIgnore\TManagerAgentTest\TManagerAgentTest.csproj", "{FC554DC3-4AB9-4A00-94BC-5A56353C0315}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

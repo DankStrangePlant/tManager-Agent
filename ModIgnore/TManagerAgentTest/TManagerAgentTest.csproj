@@ -12,12 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TManagerAgent.csproj" />
+    <ProjectReference Include="..\..\TManagerAgent.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\..\..\references\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\..\..\..\references\Newtonsoft.Json.dll</HintPath>
     </Reference>
   </ItemGroup>
 
