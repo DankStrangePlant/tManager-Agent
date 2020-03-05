@@ -11,14 +11,17 @@ namespace TManagerAgent
         public const string LOCALHOST = "127.0.0.1";
 
         public const string DEFAULT_OVERSEER_ADDRESS = LOCALHOST;
-        public const ushort DEFAULT_OVERSEER_PORT = 3006;
-
-        public const ushort DEFAULT_INCOMING_PORT = 3005;
+        public const ushort DEFAULT_OVERSEER_TCP_PORT = 3007;
+        public const ushort DEFAULT_OVERSEER_UDP_PORT = 3008;
         #endregion
 
         #region Config
         public string OverseerAddress { get; private set; }
-        public ushort OverseerPort { get; private set; }
+        public ushort OverseerTCPPort { get; private set; }
+        public ushort OverseerUDPPort { get; private set; }
+
+        public ushort LocalTCPPort { get; private set; }
+
         #endregion
 
         public TManagerAgent()
@@ -51,7 +54,8 @@ namespace TManagerAgent
                 (IAgentConfig)GetInstance<ClientAgentConfig>();
 
             OverseerAddress = config?.OverseerAddress ?? DEFAULT_OVERSEER_ADDRESS;
-            OverseerPort = (ushort)(config?.OverseerPort ?? DEFAULT_OVERSEER_PORT);
+            OverseerTCPPort = (ushort)(config?.OverseerTCPPort ?? DEFAULT_OVERSEER_TCP_PORT);
+            OverseerUDPPort = (ushort)(config?.OverseerUDPPort ?? DEFAULT_OVERSEER_UDP_PORT);
 
             if (config is null)
             {

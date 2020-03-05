@@ -10,18 +10,11 @@ namespace TManagerAgent.Net
         public Socket socketUDP;
         private IPEndPoint endPoint;
 
-        private TManagerAgentWorld WorldInstance;
-
         private static string targetKey;
 
         public static void SetTargetKey(string target)
         {
             targetKey = target;
-        }
-
-        public ClientUDP(TManagerAgentWorld world)
-        {
-            WorldInstance = world;
         }
 
         public void setEndPointIP(string name)

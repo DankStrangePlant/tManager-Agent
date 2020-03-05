@@ -17,7 +17,8 @@ namespace TManagerAgent
     {
         string OverseerAddress { get; set; }
 
-        int OverseerPort { get; set; }
+        int OverseerTCPPort { get; set; }
+        int OverseerUDPPort { get; set; }
     }
 
     public class RawAgentConfig : IAgentConfig
@@ -26,7 +27,7 @@ namespace TManagerAgent
         public RawAgentConfig(string address, ushort port)
         {
             OverseerAddress = address;
-            OverseerPort = port;
+            OverseerTCPPort = port;
         }
         #endregion
 
@@ -34,14 +35,17 @@ namespace TManagerAgent
         public string OverseerAddress { get; set; } = TManagerAgent.DEFAULT_OVERSEER_ADDRESS;
 
         [Range(ushort.MinValue, ushort.MaxValue)]
-        public int OverseerPort { get; set; } = TManagerAgent.DEFAULT_OVERSEER_PORT;
+        public int OverseerTCPPort { get; set; } = TManagerAgent.DEFAULT_OVERSEER_TCP_PORT;
+
+        [Range(ushort.MinValue, ushort.MaxValue)]
+        public int OverseerUDPPort { get; set; } = TManagerAgent.DEFAULT_OVERSEER_UDP_PORT;
         #endregion
 
         #region Static Util
         public static RawAgentConfig Load()
         {
             // TODO ... actually load something.......
-            return new RawAgentConfig(TManagerAgent.DEFAULT_OVERSEER_ADDRESS, TManagerAgent.DEFAULT_OVERSEER_PORT);
+            return new RawAgentConfig(TManagerAgent.DEFAULT_OVERSEER_ADDRESS, TManagerAgent.DEFAULT_OVERSEER_TCP_PORT);
         }
         #endregion
     }
@@ -63,10 +67,16 @@ namespace TManagerAgent
         [Label("Overseer Address")]
         [DefaultValue(TManagerAgent.DEFAULT_OVERSEER_ADDRESS)]
         public string OverseerAddress { get; set; }
-        [Label("Overseer Port")]
+
+        [Label("Overseer TCP Port")]
         [Range(ushort.MinValue, ushort.MaxValue)]
-        [DefaultValue(TManagerAgent.DEFAULT_OVERSEER_PORT)]
-        public int OverseerPort { get; set; }
+        [DefaultValue(TManagerAgent.DEFAULT_OVERSEER_TCP_PORT)]
+        public int OverseerTCPPort { get; set; }
+
+        [Label("Overseer UDP Port")]
+        [Range(ushort.MinValue, ushort.MaxValue)]
+        [DefaultValue(TManagerAgent.DEFAULT_OVERSEER_UDP_PORT)]
+        public int OverseerUDPPort { get; set; }
         #endregion
     }
 }

@@ -6,17 +6,13 @@ namespace TManagerAgent.Net
 {
     public class ClientTCP
     {
-        byte[] m_dataBuffer = new byte[10];
         IAsyncResult m_result;
         public AsyncCallback m_pfnCallBack;
         public Socket socketTCP;
 
-        private TManagerAgentWorld WorldInstance;
+        public delegate void DataReceivedListener(string data);
 
-        public ClientTCP(TManagerAgentWorld world)
-        {
-            WorldInstance = world;
-        }
+        public DataReceivedListener DataReceived;
 
         public void CloseConnection()
         {
@@ -35,7 +31,7 @@ namespace TManagerAgent.Net
                 // Create the socket instance
                 socketTCP = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-                // Cet the remote IP address
+                // Set the remote IP address
                 IPAddress ip = IPAddress.Parse(hostName);
                 // Create the end point 
                 IPEndPoint ipEnd = new IPEndPoint(ip, port);
@@ -120,7 +116,7 @@ namespace TManagerAgent.Net
                 int charLen = d.GetChars(theSockId.dataBuffer, 0, iRx, chars, 0);
                 string szData = new string(chars);
 
-                WorldInstance.ParseServerMessage(szData);
+                DataReceived.Invoke(szData);
 
                 WaitForData();
             }

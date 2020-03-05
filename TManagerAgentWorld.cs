@@ -10,16 +10,13 @@ using Newtonsoft.Json;
 using TManagerAgent.Net;
 using Terraria.ID;
 using TManagerAgent.Core;
+using static Terraria.ModLoader.ModContent;
 
 namespace TManagerAgent
 {
     public class TManagerAgentWorld : ModWorld
     {
         TManagerAgent Mod { get; set; }
-
-        public static string hostAddress = "127.0.0.1";
-        public static int tcpPort = 31416;
-        public static int udpPort = 31417;
 
         public ClientTCP ClientTCP;
         public ClientUDP ClientUDP;
@@ -32,29 +29,18 @@ namespace TManagerAgent
         {
             base.Initialize();
 
-            Mod = (TManagerAgent)ModLoader.GetMod("TerrariaManagementSuite");
+            Mod = GetInstance<TManagerAgent>();
 
             // Initialize connection to tOverseer
-            ClientTCP = new ClientTCP(this);
-            ClientTCP.OpenConnection(hostAddress, tcpPort);
+            ClientTCP = new ClientTCP();
+            ClientTCP.DataReceived += ParseServerMessage;
+
+            ClientTCP.OpenConnection(Mod.OverseerAddress, Mod.OverseerTCPPort);
             ClientTCP.SendString("Terraria greets you via TCP.\n" + Environment.StackTrace);
 
-            ClientUDP = new ClientUDP(this);
-            ClientUDP.OpenSocket(hostAddress, udpPort);
+            ClientUDP = new ClientUDP();
+            ClientUDP.OpenSocket(Mod.OverseerAddress, Mod.OverseerTCPPort);
             ClientUDP.SendString("Terraria greets you via UDP.");
-
-            switch (Main.netMode)
-            {
-                case NetmodeID.SinglePlayer:
-                case NetmodeID.Server:
-                    // allow everything
-                    break;
-                case NetmodeID.MultiplayerClient:
-                default:
-                    // disallow write, only allow read
-                    break;
-            }
-
         }
 
         public override void PostUpdate()
@@ -65,6 +51,8 @@ namespace TManagerAgent
 
         public void PreCloseWorld()
         {
+            ClientTCP.DataReceived -= ParseServerMessage;
+
             ClientTCP.SendString("Closing World: " + Main.worldName);
             if (ClientTCP.Connected())
                 ClientTCP.CloseConnection();
