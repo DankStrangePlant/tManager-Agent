@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TManagerAgent", "TManagerAg
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TManagerAgentTest", "ModIgnore\TManagerAgentTest\TManagerAgentTest.csproj", "{FC554DC3-4AB9-4A00-94BC-5A56353C0315}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MockOverseer", "ModIgnore\MockOverseer\MockOverseer.csproj", "{CBECC1E5-3B1B-4DBE-825C-E90CA71BE6F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{FC554DC3-4AB9-4A00-94BC-5A56353C0315}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC554DC3-4AB9-4A00-94BC-5A56353C0315}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC554DC3-4AB9-4A00-94BC-5A56353C0315}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBECC1E5-3B1B-4DBE-825C-E90CA71BE6F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBECC1E5-3B1B-4DBE-825C-E90CA71BE6F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBECC1E5-3B1B-4DBE-825C-E90CA71BE6F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBECC1E5-3B1B-4DBE-825C-E90CA71BE6F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
