@@ -83,10 +83,23 @@ namespace TManagerAgent
                     Packet p = JsonConvert.DeserializeObject<Packet>(message);
                     //TODO Deal with the packet here
 
-                    if (p["command"].Equals("ping"))
+                    switch (p[Packet.MSG_FIELD])
                     {
-                        pingStopWatch.Stop();
-                        Main.NewText(pingStopWatch.ElapsedMilliseconds + " ms");
+                        case MSG.PING:
+                            Handle_PING(p);
+                            break;
+                        case MSG.PING_RESPONSE:
+                            Handle_PING_RESPONSE(p);
+                            break;
+                        case MSG.SET:
+                            Handle_SET(p);
+                            break;
+                        case MSG.WATCH:
+                            Handle_WATCH(p);
+                            break;
+                        default:
+                            UnsupportedMsgReceived(p);
+                            break;
                     }
 
                 }
@@ -97,34 +110,32 @@ namespace TManagerAgent
             }
         }
 
-        //public void GetMessage(String message)
-        //{
-        //    //Parse read message here!
-        //    //Will want to use this to add/remove elements to modActions List
-        //    if (message != null)
-        //    {
-        //        if (message != "\0")
-        //        {
-        //            message = message.Trim('\0');
+        private void Handle_PING(Packet data)
+        {
+            // TODO respond to the Overseer with PING_RESPONSE
+        }
 
-        //            Packet p = JsonConvert.DeserializeObject<Packet>(message);
-        //            //TODO Deal with the packet here
+        private void Handle_PING_RESPONSE(Packet data)
+        {
+            pingStopWatch.Stop();
+            Main.NewText($"Server response: {pingStopWatch.ElapsedMilliseconds}ms");
+        }
 
-        //            if (p["type"].Equals("misc"))
-        //            {
-        //                if (p["text"].Equals("ping"))
-        //                {
-        //                    pingStopWatch.Stop();
-        //                    Main.NewText(pingStopWatch.ElapsedMilliseconds + " ms");
-        //                }
-        //            }
+        private void Handle_SET(Packet data)
+        {
+            // TODO
+        }
 
-        //        }
-        //        else
-        //        {
-        //            System.Diagnostics.Debugger.Log(0, "1", "\nSERVER SAYS NULL TERMINATOR\n\n");
-        //        }
-        //    }
-        //}
+        private void Handle_WATCH(Packet data)
+        {
+            // TODO
+            
+        }
+
+        private void UnsupportedMsgReceived(Packet data)
+        {
+            // For debugging purposes, just display unsupported message in game chat
+            Main.NewText($"Unsupported message '{data[Packet.MSG_FIELD]}' received from server.");
+        }
     }
 }

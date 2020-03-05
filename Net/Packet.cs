@@ -6,6 +6,8 @@ namespace TManagerAgent.Net
 {
     public class Packet : Dictionary<string, object>
     {
+        public const string MSG_FIELD = "msg";
+
         public Packet() { }
 
         public Packet(String JSON)
