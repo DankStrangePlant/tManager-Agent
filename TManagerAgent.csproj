@@ -10,4 +10,10 @@
   <Target Name="BuildMod" AfterTargets="Build">
     <Exec Command="&quot;$(tMLBuildServerPath)&quot; -build $(ProjectDir) -eac $(TargetPath) -define $(DefineConstants) -unsafe $(AllowUnsafeBlocks)" />
   </Target>
+  <ItemGroup>
+    <CSFile Include="*.cs" Exclude="TManagerAgentTest\**" />
+    <Compile Remove="TManagerAgentTest\**" />
+    <EmbeddedResource Remove="TManagerAgentTest\**" />
+    <None Remove="TManagerAgentTest\**" />
+  </ItemGroup>
 </Project>
