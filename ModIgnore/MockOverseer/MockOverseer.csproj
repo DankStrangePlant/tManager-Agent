@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\TManagerAgent.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\..\..\references\Newtonsoft.Json.dll</HintPath>
     </Reference>

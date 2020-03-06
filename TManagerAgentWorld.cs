@@ -11,6 +11,8 @@ using TManagerAgent.Net;
 using Terraria.ID;
 using TManagerAgent.Core;
 using static Terraria.ModLoader.ModContent;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Schema;
 
 namespace TManagerAgent
 {
@@ -36,7 +38,7 @@ namespace TManagerAgent
             ClientTCP.DataReceived += ParseServerMessage;
 
             ClientTCP.OpenConnection(Mod.OverseerAddress, Mod.OverseerTCPPort);
-            ClientTCP.SendString("Terraria greets you via TCP.\n" + Environment.StackTrace);
+            ClientTCP.SendString("Terraria greets you via TCP.");
 
             ClientUDP = new ClientUDP();
             ClientUDP.OpenSocket(Mod.OverseerAddress, Mod.OverseerTCPPort);
@@ -61,34 +63,40 @@ namespace TManagerAgent
 
         public void ParseServerMessage(string message)
         {
-            Main.NewText("Server said: " + message);
             if (message != null)
             {
                 if (message != "\0")
                 {
                     message = message.Trim('\0');
 
-                    Packet p = JsonConvert.DeserializeObject<Packet>(message);
-                    //TODO Deal with the packet here
-
-                    switch (p[Packet.MSG_FIELD])
+                    try
                     {
-                        case MSG.PING:
-                            Handle_PING(p);
-                            break;
-                        case MSG.PING_RESPONSE:
-                            Handle_PING_RESPONSE(p);
-                            break;
-                        case MSG.SET:
-                            Handle_SET(p);
-                            break;
-                        case MSG.WATCH:
-                            Handle_WATCH(p);
-                            break;
-                        default:
-                            UnsupportedMsgReceived(p);
-                            break;
+                        Packet p = JsonConvert.DeserializeObject<Packet>(message);
+
+                        switch (p[Packet.MSG_FIELD])
+                        {
+                            case MSG.PING:
+                                Handle_PING(p);
+                                break;
+                            case MSG.PING_RESPONSE:
+                                Handle_PING_RESPONSE(p);
+                                break;
+                            case MSG.SET:
+                                Handle_SET(p);
+                                break;
+                            case MSG.WATCH:
+                                Handle_WATCH(p);
+                                break;
+                            default:
+                                UnsupportedMsgReceived(p);
+                                break;
+                        }
                     }
+                    catch
+                    {
+                        UnsupportedDataReceived(message);
+                    }
+                    
 
                 }
                 else
@@ -97,6 +105,8 @@ namespace TManagerAgent
                 }
             }
         }
+
+        #region Handlers
 
         private void Handle_PING(Packet data)
         {
@@ -125,5 +135,14 @@ namespace TManagerAgent
             // For debugging purposes, just display unsupported message in game chat
             Main.NewText($"Unsupported message '{data[Packet.MSG_FIELD]}' received from server.");
         }
+
+        static Random rand = new Random();
+        private void UnsupportedDataReceived(string data)
+        {
+            Main.NewText($"Overseer said: {data}");
+            ClientTCP.SendString("Sorry server, I didn't understand that." + rand.Next());
+        }
+
+        #endregion
     }
 }
