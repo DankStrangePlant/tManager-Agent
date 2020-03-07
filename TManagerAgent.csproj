@@ -2,10 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\references\tModLoader.targets" />
   <PropertyGroup>
-    <AssemblyName>TManagerAgent</AssemblyName>
+    <AssemblyName>tManagerAgent</AssemblyName>
     <TargetFramework>net45</TargetFramework>
     <PlatformTarget>x86</PlatformTarget>
     <LangVersion>latest</LangVersion>
+    <RootNamespace>tManagerAgent</RootNamespace>
   </PropertyGroup>
   <Target Name="BuildMod" AfterTargets="Build">
     <Exec Command="&quot;$(tMLBuildServerPath)&quot; -build $(ProjectDir) -eac $(TargetPath) -define $(DefineConstants) -unsafe $(AllowUnsafeBlocks)" />

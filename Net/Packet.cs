@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TManagerAgent.Net
+namespace tManagerAgent.Net
 {
     public class Packet : Dictionary<string, object>
     {

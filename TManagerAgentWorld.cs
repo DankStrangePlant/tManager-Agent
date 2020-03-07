@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 using Terraria;
 using Terraria.ModLoader;
 using Newtonsoft.Json;
-using TManagerAgent.Net;
+using tManagerAgent.Net;
 using Terraria.ID;
-using TManagerAgent.Core;
+using tManagerAgent.Core;
 using static Terraria.ModLoader.ModContent;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
 
-namespace TManagerAgent
+namespace tManagerAgent
 {
     public class TManagerAgentWorld : ModWorld
     {
@@ -34,15 +34,21 @@ namespace TManagerAgent
             Mod = GetInstance<TManagerAgent>();
 
             // Initialize connection to tOverseer
-            ClientTCP = new ClientTCP();
-            ClientTCP.DataReceived += ParseServerMessage;
+            ClientTCP = new ClientTCP(Mod.OverseerAddress, Mod.OverseerTCPPort);
+            ClientTCP.OnMessageReceived += ParseServerMessage;
+            bool success = ClientTCP.TryConnect();
+            if(success)
+            {
+                ClientTCP.StartListening();
+                ClientTCP.SendMessage("Terraria greets you via TCP.");
+            }
 
-            ClientTCP.OpenConnection(Mod.OverseerAddress, Mod.OverseerTCPPort);
-            ClientTCP.SendString("Terraria greets you via TCP.");
 
-            ClientUDP = new ClientUDP();
-            ClientUDP.OpenSocket(Mod.OverseerAddress, Mod.OverseerTCPPort);
-            ClientUDP.SendString("Terraria greets you via UDP.");
+            ClientUDP = new ClientUDP(Mod.OverseerAddress, Mod.OverseerUDPPort);
+            ClientUDP.OnMessageReceived += ParseServerUDPMessage;
+            ClientUDP.Connect();
+            ClientUDP.StartListening();
+            ClientUDP.SendMessage("Terraria greets you via UDP.");
         }
 
         public override void PostUpdate()
@@ -53,12 +59,18 @@ namespace TManagerAgent
 
         public void PreCloseWorld()
         {
-            ClientTCP.DataReceived -= ParseServerMessage;
+            ClientTCP.OnMessageReceived -= ParseServerMessage;
+            ClientUDP.OnMessageReceived -= ParseServerUDPMessage;
 
-            ClientTCP.SendString("Closing World: " + Main.worldName);
-            if (ClientTCP.Connected())
-                ClientTCP.CloseConnection();
-            ClientUDP.CloseSocket();
+            ClientTCP.SendMessage("Closing World: " + Main.worldName);
+            if (ClientTCP.Connected)
+            {
+                ClientTCP.Disconnect();
+            }
+            if(ClientUDP.Listening)
+            {
+                ClientUDP.Disconnect();
+            }
         }
 
         public void ParseServerMessage(string message)
@@ -106,6 +118,12 @@ namespace TManagerAgent
             }
         }
 
+        public void ParseServerUDPMessage(string message)
+        {
+            // maybe do something different here
+            ParseServerMessage(message);
+        }
+
         #region Handlers
 
         private void Handle_PING(Packet data)
@@ -140,7 +158,7 @@ namespace TManagerAgent
         private void UnsupportedDataReceived(string data)
         {
             Main.NewText($"Overseer said: {data}");
-            ClientTCP.SendString("Sorry server, I didn't understand that." + rand.Next());
+            ClientTCP.SendMessage("Sorry server, I didn't understand that." + rand.Next());
         }
 
         #endregion

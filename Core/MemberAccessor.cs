@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TManagerAgent.Core
+namespace tManagerAgent.Core
 {
     public interface IMemberAccessor<T>
     {

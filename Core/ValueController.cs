@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Terraria;
 using Terraria.Map;
 
-namespace TManagerAgent.Core
+namespace tManagerAgent.Core
 {
     public class ValueController
     {

@@ -1,96 +1,166 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace TManagerAgent.Net
+namespace tManagerAgent.Net
 {
-    public class ClientUDP : IDisposable
+    /// <summary>
+    /// Wrapper around a UDP socket which listens asynchronously
+    /// and can also send messages synchronously.
+    /// </summary>
+    public class ClientUDP
     {
-        byte[] m_dataBuffer = new byte[256];
-        public Socket socketUDP;
-        private IPEndPoint endPoint;
+        #region Public Delegate
+        public delegate void MessageHandler(string message);
 
-        private static string targetKey;
+        public event MessageHandler OnMessageReceived;
+        #endregion
 
-        public static void SetTargetKey(string target)
+        #region Public Properties
+        public bool Connected => Client != null && Client.Connected;
+        public bool Listening => CurrentListenLoop != null && CurrentListenLoop.Status == TaskStatus.Running;
+        #endregion
+
+        #region Constructors
+        public ClientUDP(string remoteHost, ushort remotePort) :
+            this(new IPEndPoint(IPAddress.Parse(remoteHost), remotePort))
+        { }
+
+        public ClientUDP(IPEndPoint endpoint)
         {
-            targetKey = target;
+            RemoteEP = endpoint;
+
+            ReInit();
+        }
+        #endregion
+
+        #region Public Functions
+        public void Reconfigure(string remoteHost, ushort remotePort) =>
+            new IPEndPoint(IPAddress.Parse(remoteHost), remotePort);
+
+        public void Reconfigure(IPEndPoint endpoint)
+        {
+            RemoteEP = endpoint;
         }
 
-        public void setEndPointIP(string name)
+        public void ReInit()
         {
-            IPAddress ip = IPAddress.Parse(name);
-            endPoint.Address = ip;
+            Client = new Socket(AddressFamily.InterNetwork,
+                SocketType.Dgram, ProtocolType.Udp);
         }
 
-        public void setEndPointPort(int port)
+        public void Connect()
         {
-            endPoint.Port = port;
+            Client.Connect(RemoteEP);
         }
 
-        public void CloseSocket()
+        /// <summary>
+        /// Start asynchronously listening for messages
+        /// </summary>
+        public void StartListening()
         {
-            if (socketUDP != null)
+            StopListenTokenSource = new CancellationTokenSource();
+
+            CurrentListenLoop = new Task(ListenLoop, StopListenTokenSource.Token);
+            CurrentListenLoop.Start();
+        }
+
+        public void StopListening()
+        {
+            if (Listening)
             {
-                socketUDP.Shutdown(SocketShutdown.Both);
-                socketUDP.Dispose();
-                socketUDP = null;
+                StopListenTokenSource.Cancel();
             }
         }
 
-        public void OpenSocket(string name, int port)
-        {
-            // Create the socket instance
-            socketUDP = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-
-            //// Cet the remote IP address
-            IPAddress ip = IPAddress.Parse(name);
-            //// Create the end point 
-            endPoint = new IPEndPoint(ip, port);
-        }
-
-        public void SendMessage(Packet p)
-        {
-            SendString(p.Serialize());
-        }
-
-        public void SendString(string message)
+        public bool SendMessage(string message)
         {
             try
             {
-                object objData = message;
-                byte[] byData = System.Text.Encoding.ASCII.GetBytes(objData.ToString());
-                if (socketUDP != null)
-                {
-                    socketUDP.SendTo(byData, endPoint);
-                }
+                // Encode the data string into a byte array.  
+                byte[] msg = Encoding.ASCII.GetBytes(message);
+
+                // Send the data through the socket.  
+                Client.Send(msg);
             }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
+            catch { return false; }
+
+            return true;
         }
 
-        public void BroadcastMessage(string message)
+        public bool SendObject(object obj) => SendMessage(JsonConvert.SerializeObject(obj));
+        #endregion
+
+        #region Private
+        private Socket Client { get; set; }
+        private IPEndPoint RemoteEP { get; set; }
+
+
+        private Task CurrentListenLoop { get; set; }
+        private CancellationTokenSource StopListenTokenSource { get; set; }
+
+        private void ListenLoop()
         {
+            CancellationToken cancelToken = StopListenTokenSource.Token;
+
+            // Buffer for incoming data
+            byte[] bytes = new byte[1024];
+
+
             try
             {
-                object objData = message;
-                byte[] byData = System.Text.Encoding.ASCII.GetBytes(objData.ToString());
-                if (socketUDP != null)
+                while (true)
                 {
-                    socketUDP.Send(byData);
+                    if (cancelToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    // Timeout timer
+                    CancellationTokenSource timeoutCancelSource = new CancellationTokenSource();
+
+                    Task timeoutTask = new Task(() =>
+                    {
+                        for (int count = 0; count < 5; count++)
+                        {
+                            Thread.Sleep(1000);
+                            if (timeoutCancelSource.Token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                        }
+                        Disconnect();
+                    }, timeoutCancelSource.Token);
+
+                    // start timeout countdown
+                    timeoutTask.Start();
+
+                    // Receive the response from the remote device.  
+                    int bytesRec = Client.Receive(bytes);
+
+                    // Cancel timeout countdown
+                    timeoutCancelSource.Cancel();
+
+                    string message = Encoding.ASCII.GetString(bytes, 0, bytesRec);
+                    OnMessageReceived?.Invoke(message);
                 }
             }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
+            catch { }
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Shutdown and close the client socket.
+        /// </summary>
+        public void Disconnect()
         {
-            ((IDisposable)socketUDP).Dispose();
+            StopListening();
+            Client.Shutdown(SocketShutdown.Both);
+            Client.Close();
         }
+        #endregion
     }
 }

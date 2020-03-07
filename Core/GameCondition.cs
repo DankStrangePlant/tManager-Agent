@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TManagerAgent.Core
+namespace tManagerAgent.Core
 {
     /// <summary>
     /// Simple class that is used to determine if a given routed game variable

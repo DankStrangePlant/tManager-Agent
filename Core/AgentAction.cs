@@ -6,9 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria;
 using Terraria.ID;
-using TManagerAgent.Net;
+using tManagerAgent.Net;
 
-namespace TManagerAgent.Core
+namespace tManagerAgent.Core
 {
     public abstract class AgentAction
     {

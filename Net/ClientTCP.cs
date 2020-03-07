@@ -1,138 +1,222 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace TManagerAgent.Net
+namespace tManagerAgent.Net
 {
+
+    /// <summary>
+    /// Wrapper around a TCP socket which listens asynchronously
+    /// and can also send messages synchronously.
+    /// </summary>
     public class ClientTCP
     {
-        IAsyncResult m_result;
-        public AsyncCallback m_pfnCallBack;
-        public Socket socketTCP;
+        #region Public Delegate
+        public delegate void ConnectCallback();
+        public delegate void DisconnectCallback();
+        public delegate void MessageHandler(string message);
 
-        public delegate void DataReceivedListener(string data);
+        public event ConnectCallback OnConnect;
+        public event DisconnectCallback OnDisconnect;
+        public event MessageHandler OnMessageReceived;
+        #endregion
 
-        public DataReceivedListener DataReceived;
+        #region Public Properties
+        public bool Connected => Client != null && Client.Connected;
+        public bool Listening => CurrentListenLoop != null && CurrentListenLoop.Status == TaskStatus.Running;
+        #endregion
 
-        public void CloseConnection()
+        #region Constructors
+        public ClientTCP(string remoteHost, ushort remotePort) :
+            this(new IPEndPoint(IPAddress.Parse(remoteHost), remotePort))
+        { }
+
+        public ClientTCP(IPEndPoint endpoint)
         {
-            if (socketTCP != null)
-            {
-                socketTCP.Shutdown(SocketShutdown.Both);
-                socketTCP.Dispose();
-                socketTCP = null;
-            }
+            RemoteEP = endpoint;
+
+            ReInit();
+        }
+        #endregion
+
+        #region Public Functions
+        public void Reconfigure(string remoteHost, ushort remotePort) =>
+            new IPEndPoint(IPAddress.Parse(remoteHost), remotePort);
+
+        public void Reconfigure(IPEndPoint endpoint)
+        {
+            RemoteEP = endpoint;
         }
 
-        public void OpenConnection(string hostName, int port)
+        public void ReInit()
+        {
+            Client = new Socket(AddressFamily.InterNetwork,
+                SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public bool TryConnect()
         {
             try
             {
-                // Create the socket instance
-                socketTCP = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                Client.Connect(RemoteEP);
+            }
+            catch { return false; }
 
-                // Set the remote IP address
-                IPAddress ip = IPAddress.Parse(hostName);
-                // Create the end point 
-                IPEndPoint ipEnd = new IPEndPoint(ip, port);
-                // Connect to the remote host
-                socketTCP.Connect(ipEnd);
-                if (socketTCP.Connected)
+            // Only get here on successful connect
+            OnConnect?.Invoke();
+            return true;
+        }
+
+        public Task<bool> TryConnectAsync()
+        {
+            return Task.Run(TryConnect);
+        }
+
+        public Task<bool> TryConnectAsyncWithRetry(int attempts = 5)
+        {
+            return Task.Run(() => {
+                for (int attempt = 0; attempt < attempts; attempt++)
                 {
-                    //Wait for data asynchronously 
-                    WaitForData();
+                    if (TryConnect())
+                    {
+                        return true;
+                    }
+                    Thread.Sleep(5000);
+                }
+                return false;
+            });
+        }
+
+        /// <summary>
+        /// Start asynchronously listening for messages
+        /// </summary>
+        public void StartListening()
+        {
+            StopListenTokenSource = new CancellationTokenSource();
+
+            CurrentListenLoop = new Task(ListenLoop, StopListenTokenSource.Token);
+            CurrentListenLoop.Start();
+
+            CurrentHeartbeatLoop = new Task(HeartbeatLoop, StopListenTokenSource.Token);
+            CurrentHeartbeatLoop.Start();
+        }
+
+        public void StopListening()
+        {
+            if (Listening)
+            {
+                StopListenTokenSource.Cancel();
+            }
+        }
+
+        public bool SendMessage(string message)
+        {
+            try
+            {
+                // Encode the data string into a byte array.  
+                byte[] msg = Encoding.ASCII.GetBytes(message);
+
+                // Send the data through the socket.  
+                Client.Send(msg);
+            }
+            catch { return false; }
+
+            return true;
+        }
+
+        public bool SendObject(object obj) => SendMessage(JsonConvert.SerializeObject(obj));
+        #endregion
+
+        #region Private
+        private Socket Client { get; set; }
+        private IPEndPoint RemoteEP { get; set; }
+
+
+        private Task CurrentListenLoop { get; set; }
+        private Task CurrentHeartbeatLoop { get; set; }
+        private CancellationTokenSource StopListenTokenSource { get; set; }
+
+        private void ListenLoop()
+        {
+            CancellationToken cancelToken = StopListenTokenSource.Token;
+
+            // Buffer for incoming data
+            byte[] bytes = new byte[1024];
+
+            try
+            {
+                while (true)
+                {
+                    if (cancelToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    // Timeout timer
+                    CancellationTokenSource timeoutCancelSource = new CancellationTokenSource();
+
+                    Task timeoutTask = new Task(() =>
+                    {
+                        for (int count = 0; count < 5; count++)
+                        {
+                            Thread.Sleep(1000);
+                            if (timeoutCancelSource.Token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                        }
+                        Disconnect();
+                    }, timeoutCancelSource.Token);
+
+                    // start timeout countdown
+                    timeoutTask.Start();
+
+                    // Receive the response from the server
+                    int bytesRec = Client.Receive(bytes);
+
+                    // Cancel timeout countdown
+                    timeoutCancelSource.Cancel();
+
+                    string message = Encoding.ASCII.GetString(bytes, 0, bytesRec);
+                    OnMessageReceived?.Invoke(message);
                 }
             }
-            catch (SocketException se)
-            {
-                string str;
-                str = "\nConnection failed, is the server running?\n" + se.Message;
-                Console.WriteLine(str);
-            }
+            catch { }
         }
 
-        public void SendMessage(Packet p)
+        private void HeartbeatLoop()
         {
-            SendString(p.Serialize());
-        }
+            CancellationToken cancelToken = StopListenTokenSource.Token;
 
-        public void SendString(string message)
-        {
-            if (!Connected()) return; // Do nothing if we're not connected
             try
             {
-                object objData = message;
-                byte[] byData = System.Text.Encoding.ASCII.GetBytes(objData.ToString());
-                if (socketTCP != null)
+                while (true)
                 {
-                    socketTCP.Send(byData);
+                    SendMessage("{ \"msg\":\"ping\" }");
+                    Thread.Sleep(3000);
+                    if (cancelToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
                 }
             }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
+            catch { }
         }
 
-        public void WaitForData()
+        /// <summary>
+        /// Shutdown and close the client socket.
+        /// </summary>
+        public void Disconnect()
         {
-            try
-            {
-                if (m_pfnCallBack == null)
-                {
-                    m_pfnCallBack = new AsyncCallback(OnDataReceived);
-                }
-                SocketPacket theSocPkt = new SocketPacket();
-                theSocPkt.thisSocket = socketTCP;
-                // Start listening to the data asynchronously
-                if (socketTCP != null)
-                    m_result = socketTCP.BeginReceive(theSocPkt.dataBuffer,
-                                                            0, theSocPkt.dataBuffer.Length,
-                                                            SocketFlags.None,
-                                                            m_pfnCallBack,
-                                                            theSocPkt);
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
-
+            StopListening();
+            Client.Shutdown(SocketShutdown.Both);
+            Client.Close();
+            OnDisconnect?.Invoke();
         }
-
-        public class SocketPacket
-        {
-            public Socket thisSocket;
-            public byte[] dataBuffer = new byte[256];
-        }
-
-        public void OnDataReceived(IAsyncResult asyn)
-        {
-            try
-            {
-                SocketPacket theSockId = (SocketPacket)asyn.AsyncState;
-                int iRx = theSockId.thisSocket.EndReceive(asyn);
-                char[] chars = new char[iRx + 1];
-                System.Text.Decoder d = System.Text.Encoding.UTF8.GetDecoder();
-                int charLen = d.GetChars(theSockId.dataBuffer, 0, iRx, chars, 0);
-                string szData = new string(chars);
-
-                DataReceived.Invoke(szData);
-
-                WaitForData();
-            }
-            catch (ObjectDisposedException)
-            {
-                System.Diagnostics.Debugger.Log(0, "1", "\nOnDataReceived: Socket has been closed\n");
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
-        }
-
-        public bool Connected()
-        {
-            return socketTCP.Connected;
-        }
+        #endregion
     }
 }

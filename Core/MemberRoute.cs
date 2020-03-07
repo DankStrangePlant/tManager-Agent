@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace TManagerAgent.Core
+namespace tManagerAgent.Core
 {
     /// <summary>
     /// Container for all information necessary for <see cref="ValueController"/>

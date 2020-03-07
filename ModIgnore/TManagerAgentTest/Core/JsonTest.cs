@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 using NUnit.Framework;
-using TManagerAgent.Core;
+using tManagerAgent.Core;
 
-namespace TManagerAgentTest.Core
+namespace tManagerAgentTest.Core
 {
     [TestFixture]
     class JsonTest

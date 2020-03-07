@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria.ModLoader;
 
-namespace TManagerAgent.Commands
+namespace tManagerAgent.Commands
 {
     public class PingCommand : ModCommand
     {

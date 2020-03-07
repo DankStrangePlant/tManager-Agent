@@ -6,8 +6,25 @@
         xmlns:local="clr-namespace:MockOverseer"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <StackPanel>
-        <TextBlock Name="ConnectedText" Text="Connected" Visibility="Hidden" FontSize="30" />
-        <TextBlock Name="LastMessageText" Text="No message received yet" Visibility="Hidden" />
-    </StackPanel>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="TCP" FontSize="40" />
+            <TextBlock Name="TCPConnectedText" Text="Waiting for connection..." FontSize="25" />
+            <TextBlock Name="TCPLastMessageReceivedText" Text="No message received yet" />
+            <TextBlock Name="TCPLastMessageSentText" Text="No message sent yet" />
+            <Separator />
+            <Button Click="TCP_Ping_Button_Click" Content="Ping" />
+            <Button Click="TCP_Disconnect_Button_Click" Content="Disconnect" />
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+            <TextBlock Text="UDP" FontSize="40" />
+            <TextBlock Name="UDPListeningText" Text="Not listening" FontSize="25" />
+            <TextBlock Name="UDPLastMessageReceivedText" Text="No message received yet" />
+            <TextBlock Name="UDPLastMessageSentText" Text="No message sent yet" />
+        </StackPanel>
+    </Grid>
 </Window>

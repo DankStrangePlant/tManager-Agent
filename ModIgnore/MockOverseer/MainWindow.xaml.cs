@@ -29,139 +29,94 @@ namespace MockOverseer
         public const ushort TCP_LISTENING_PORT = 3007;
         public const ushort UDP_LISTENING_PORT = 3008;
 
-        public Socket MySocket;
-        public Socket ServerSocket;
-        IAsyncResult m_result;
+        TCPServer TCPServer { get; set; }
+        UDPServer UDPServer { get; set; }
 
         public MainWindow()
         {
             InitializeComponent();
 
-            new Task(() => StartTCPSocket()).Start();
-        }
+            TCPServer = new TCPServer();
 
-        public void StartTCPSocket()
-        {
-            // Establish the local endpoint  
-            // for the socket. Dns.GetHostName 
-            // returns the name of the host  
-            // running the application. 
-            IPAddress ipAddr = IPAddress.Parse(LOCALHOST);
-            IPEndPoint localEndPoint = new IPEndPoint(ipAddr, TCP_LISTENING_PORT);
+            TCPServer.OnConnect += TCPConnected;
+            TCPServer.OnDisconnect += TCPDisconnected;
+            TCPServer.OnMessageReceived += TCPMessageReceived;
 
-            // Creation TCP/IP Socket using  
-            // Socket Class Costructor 
-            MySocket = new Socket(ipAddr.AddressFamily,
-                         SocketType.Stream, ProtocolType.Tcp);
-            try
+            // TCP server control loop
+            Task tcpServerLoop = new Task(() =>
             {
-
-                // Using Bind() method we associate a 
-                // network address to the Server Socket 
-                // All client that will connect to this  
-                // Server Socket must know this network 
-                // Address 
-                MySocket.Bind(localEndPoint);
-
-                // Using Listen() method we create  
-                // the Client list that will want 
-                // to connect to Server 
-                MySocket.Listen(1);
-
-                Console.WriteLine("Waiting connection ... ");
-
-                // Suspend while waiting for 
-                // incoming connection Using  
-                // Accept() method the server  
-                // will accept connection of client 
-                ServerSocket = MySocket.Accept();
-
-                Dispatcher.Invoke(() => { ConnectedText.Visibility = Visibility.Visible; });
-                Dispatcher.Invoke(() => { LastMessageText.Visibility = Visibility.Visible; });
-
-                WaitForData();
-            }
-
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
-
-        public AsyncCallback m_pfnCallBack;
-        public void WaitForData()
-        {
-            try
-            {
-                if (m_pfnCallBack == null)
+                while (true)
                 {
-                    m_pfnCallBack = new AsyncCallback(OnDataReceived);
+                    TCPServer.InitServer();
+                    TCPServer.WaitForConnection();
+                    TCPServer.Listen();
                 }
-                SocketPacket theSocPkt = new SocketPacket();
-                theSocPkt.thisSocket = ServerSocket;
-                // Start listening to the data asynchronously
-                if (ServerSocket != null)
-                    m_result = ServerSocket.BeginReceive(theSocPkt.dataBuffer,
-                                                            0, theSocPkt.dataBuffer.Length,
-                                                            SocketFlags.None,
-                                                            m_pfnCallBack,
-                                                            theSocPkt);
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
+            });
+            tcpServerLoop.Start();
 
+            // This is enough to init the udp server
+            UDPServer = new UDPServer();
+            UDPServer.OnMessageReceived += UDPMessageReceived;
+            UDPListening();
         }
 
-        public void OnDataReceived(IAsyncResult asyn)
+        #region TCP events
+        public void TCPConnected()
         {
-            try
-            {
-                SocketPacket theSockId = (SocketPacket)asyn.AsyncState;
-                int iRx = theSockId.thisSocket.EndReceive(asyn);
-                char[] chars = new char[iRx + 1];
-                System.Text.Decoder d = System.Text.Encoding.UTF8.GetDecoder();
-                int charLen = d.GetChars(theSockId.dataBuffer, 0, iRx, chars, 0);
-                string szData = new string(chars);
-
-                Debugger.Log(0, "1", $"Received data: {szData}");
-                Dispatcher.Invoke(() => { LastMessageText.Text = $"Last message received: {szData}"; });
-
-                Task.Delay(5000).ContinueWith((_) => {
-                    SendData("Hi client! I got your message!");
-                });
-
-
-                WaitForData();
-            }
-            catch (ObjectDisposedException)
-            {
-                System.Diagnostics.Debugger.Log(0, "1", "\nOnDataReceived: Socket has been closed\n");
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine(se.Message);
-            }
+            Dispatcher.Invoke(() => { TCPConnectedText.Text = "Connected"; });
         }
 
-        public void SendData(string str)
+        public void TCPDisconnected()
         {
-            byte[] message = Encoding.ASCII.GetBytes(str);
-
-            // Send a message to Client  
-            // using Send() method 
-            ServerSocket.Send(message);
+            Dispatcher.Invoke(() => { TCPConnectedText.Text = "Waiting for connection..."; });
         }
 
-        public void SendObject(object data)
+        public void TCPMessageReceived(string message)
         {
-            SendData(JsonConvert.SerializeObject(data));
+            Dispatcher.Invoke(() => { TCPLastMessageReceivedText.Text = message; });
+
+
         }
-    }
-    public class SocketPacket
-    {
-        public Socket thisSocket;
-        public byte[] dataBuffer = new byte[256];
+        #endregion
+
+        #region UDP Events
+        public void UDPListening()
+        {
+            Dispatcher.Invoke(() => { UDPListeningText.Text = "Listening..."; });
+        }
+
+        public void UDPMessageReceived(string message)
+        {
+            Dispatcher.Invoke(() => { UDPLastMessageReceivedText.Text = message; });
+
+
+        }
+        #endregion
+
+        #region Send
+        public void TCPSendMessage(string message)
+        {
+            TCPServer.SendMessage(message);
+            Dispatcher.Invoke(() => { TCPLastMessageSentText.Text = message; });
+        }
+
+        public void UDPSendMessage(string message)
+        {
+            UDPServer.SendMessage(message);
+            Dispatcher.Invoke(() => { UDPLastMessageSentText.Text = message; });
+        }
+        #endregion
+
+        #region Window Events
+        private void TCP_Ping_Button_Click(object sender, RoutedEventArgs e)
+        {
+            TCPSendMessage("{ \"msg\":\"ping\" }");
+        }
+
+        private void TCP_Disconnect_Button_Click(object sender, RoutedEventArgs e)
+        {
+            TCPServer.Disconnect();
+        }
+        #endregion
     }
 }

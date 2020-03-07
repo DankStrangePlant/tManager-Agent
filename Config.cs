@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using static Terraria.ModLoader.ModContent;
 
-namespace TManagerAgent
+namespace tManagerAgent
 {
     public interface IAgentConfig
     {
